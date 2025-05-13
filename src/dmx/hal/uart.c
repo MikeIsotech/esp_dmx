@@ -43,6 +43,25 @@ enum {
   RDM_TYPE_IS_UNKNOWN,  // The packet is RDM, but it is unclear what type it is.
 };
 
+periph_module_t dmx_port_to_periph(dmx_port_t port)
+{
+	switch (port)
+	{
+	case 0: 
+		return PERIPH_UART0_MODULE;
+		break;
+	case 1: 
+		return PERIPH_UART1_MODULE;
+		break;
+	case 2: 
+		return PERIPH_UART2_MODULE;
+		break;
+	default: 
+		return PERIPH_MODULE_MAX;
+		break;
+	}
+}
+
 static void DMX_ISR_ATTR dmx_uart_isr(void *arg) {
   const int64_t now = dmx_timer_get_micros_since_boot();
   dmx_driver_t *const driver = arg;
@@ -327,15 +346,15 @@ static void DMX_ISR_ATTR dmx_uart_isr(void *arg) {
 bool dmx_uart_init(dmx_port_t dmx_num, void *isr_context, int isr_flags) {
   struct dmx_uart_t *uart = &dmx_uart_context[dmx_num];
 
-  periph_module_enable(uart_periph_signal[dmx_num].module);
+  periph_module_enable(dmx_port_to_periph(dmx_num));
   if (dmx_num != 0) {  // Default UART port for console
 #if SOC_UART_REQUIRE_CORE_RESET
     // ESP32C3 workaround to prevent UART outputting garbage data
     uart_ll_set_reset_core(uart->dev, true);
-    periph_module_reset(uart_periph_signal[dmx_num].module);
+	  periph_module_reset(dmx_port_to_periph(dmx_num));
     uart_ll_set_reset_core(uart->dev, false);
 #else
-    periph_module_reset(uart_periph_signal[dmx_num].module);
+	  periph_module_reset(dmx_port_to_periph(dmx_num));
 #endif
   }
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
@@ -381,7 +400,7 @@ bool dmx_uart_init(dmx_port_t dmx_num, void *isr_context, int isr_flags) {
 void dmx_uart_deinit(dmx_port_t dmx_num) {
   struct dmx_uart_t *uart = &dmx_uart_context[dmx_num];
   if (uart->num != 0) {  // Default UART port for console
-    periph_module_disable(uart_periph_signal[uart->num].module);
+	  periph_module_disable(dmx_port_to_periph(dmx_num));
   }
 }
 
